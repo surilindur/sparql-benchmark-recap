@@ -35,6 +35,11 @@ def register_args(parser: ArgumentParser) -> None:
         help="Use the chosen delimiter",
         default="\t",
     )
+    parser.add_argument(
+        "--linear",
+        help="Whether to use linear interpolation for answer distribution",
+        default=False,
+    )
 
 
 def relative_to_baseline(
@@ -58,6 +63,7 @@ def run_script(
     experiments: Path,
     output: Path,
     delimiter: str,
+    linear: bool,
     baseline: str | None = None,
 ) -> None:
 
@@ -73,9 +79,12 @@ def run_script(
         if query not in results:
             results[query] = {}
         results[query][result.experiment] = (
-            result.diefficiency() if not result.error else None
+            result.diefficiency(linear=linear) if not result.error else None
         )
-        queries.append(query)
+        if query not in queries:
+            queries.append(query)
+        if result.experiment not in configs:
+            configs.append(result.experiment)
 
     # if baseline is selected, convert all results to be relative to that one
     if baseline:

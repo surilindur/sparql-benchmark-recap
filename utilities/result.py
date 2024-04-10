@@ -36,12 +36,15 @@ class Result:
             int(row["httpRequests"]) if len(row["httpRequests"]) > 0 else 0
         )
 
-    def diefficiency(self) -> float:
+    def diefficiency(self, linear: bool = False) -> float:
         previous_timestamp = 0
         diefficiency_total = 0
         result_count = 0
         for t in self.timestamps:
-            diefficiency_total += (t - previous_timestamp) * (result_count + 0.5)
+            x = t - previous_timestamp
+            y = result_count + (0.5 if linear else 0)
+            diefficiency_total += x * y
+            previous_timestamp = t
             result_count += 1
         return diefficiency_total
 

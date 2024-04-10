@@ -1,13 +1,17 @@
 from os import scandir
-from sys import argv
 from pathlib import Path
 from typing import Dict
-from argparse import ArgumentParser, _SubParsersAction
+from argparse import ArgumentParser, Namespace, _SubParsersAction
 from logging import DEBUG, INFO, ERROR, basicConfig, exception
 from importlib import import_module
 
 log_levels: Dict[str, int] = {"debug": DEBUG, "info": INFO, "error": ERROR}
 scripts_module = "scripts"
+
+
+class SparqlBenchmarkRecapNamespace(Namespace):
+    logging: str
+    script: str
 
 
 def setup_logging(level: str) -> None:
@@ -43,14 +47,17 @@ def run() -> None:
         ),
         allow_abbrev=False,
     )
-    parser.add_argument("--logging", choices=log_levels.keys(), default="info")
     subparsers = parser.add_subparsers(dest="script")
     scripts = load_scripts(subparsers)
-    args = parser.parse_known_args(argv[1:])[0]
+    parser.add_argument("--logging", choices=log_levels.keys(), default="info")
+    args: SparqlBenchmarkRecapNamespace = parser.parse_args()
     setup_logging(args.logging)
-    scripts[args.script](
-        **{k: v for k, v in args._get_kwargs() if k not in ("script", "logging")}
-    )
+    if not args.script:
+        parser.print_help()
+    else:
+        scripts[args.script](
+            **{k: v for k, v in args._get_kwargs() if k not in ("script", "logging")}
+        )
 
 
 if __name__ == "__main__":
