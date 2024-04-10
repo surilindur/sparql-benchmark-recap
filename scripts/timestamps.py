@@ -5,12 +5,14 @@ from numpy import arange, ndarray
 from argparse import ArgumentParser
 from logging import info
 from matplotlib import rcParams
+from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.ticker import MaxNLocator
 from matplotlib.figure import Figure
 from matplotlib.pyplot import figure, get_cmap
 
 from utilities.result import load_results, group_by_query, Result
+from utilities.sorting import natural_sort_key
 
 COLUMN_INCHES = 4
 ROW_INCHES = 3
@@ -38,7 +40,7 @@ def register_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--colormap",
         help="The colour map to use for the plot",
-        default="tab10",
+        default="nipy_spectral",
         type=str,
     )
     parser.add_argument(
@@ -59,7 +61,7 @@ def register_args(parser: ArgumentParser) -> None:
     )
 
 
-def get_colors(colormap: str, configs: List[str]) -> Dict[str, ndarray]:
+def get_colors(configs: List[str], colormap: str) -> Dict[str, ndarray]:
     cmap = get_cmap(colormap).resampled(len(configs))
     colors = cmap(arange(0, cmap.N))
     return {configs[i]: colors[i] for i in range(0, len(configs))}
@@ -76,11 +78,16 @@ def plot_timestamps(
     cols: int = ceil(len(results) / rows)
     info(f"Plotting into {cols} x {rows} grid")
     subplot_index: int = 0
-    for query, query_results in sorted(results.items(), key=lambda i: i[0]):
+    # results are grouped by query -> sort them by the query name
+    sorted_query_results = sorted(results.items(), key=lambda i: natural_sort_key(i[0]))
+    for query, query_results in sorted_query_results:
         subplot_index += 1
         ax: Axes = fig.add_subplot(rows, cols, subplot_index)
         ax.set_title(query)
-        for result in sorted(query_results, key=lambda r: r.experiment):
+        # sort the different results by the configuration they used
+        for result in sorted(
+            query_results, key=lambda r: natural_sort_key(r.experiment)
+        ):
             # the result count will have (0, 0) added to the beginning
             if steps:
                 ax.step(
@@ -146,7 +153,7 @@ def run_script(
     results = load_results(experiments)
     configs = list(set(r.experiment for r in results))
     results = group_by_query(results)
-    colors = get_colors(colormap, configs)
+    colors = get_colors(configs, colormap)
     if serif:
         rcParams["font.family"] = "serif"
         rcParams["mathtext.fontset"] = "dejavuserif"

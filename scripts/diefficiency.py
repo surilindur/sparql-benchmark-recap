@@ -5,6 +5,7 @@ from pathlib import Path
 from logging import info
 
 from utilities.result import load_results
+from utilities.sorting import natural_sort_key
 
 
 def register_args(parser: ArgumentParser) -> None:
@@ -90,8 +91,8 @@ def run_script(
     if baseline:
         results = relative_to_baseline(results, baseline)
 
-    configs.sort()
-    queries.sort()
+    configs.sort(key=natural_sort_key)
+    queries.sort(key=natural_sort_key)
     configs.insert(0, "query")
 
     with open(output, "w") as output_file:
