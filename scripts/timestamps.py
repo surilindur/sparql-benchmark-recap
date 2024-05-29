@@ -5,7 +5,6 @@ from numpy import arange, ndarray
 from argparse import ArgumentParser
 from logging import info
 from matplotlib import rcParams
-from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.ticker import MaxNLocator
 from matplotlib.figure import Figure
@@ -40,7 +39,7 @@ def register_args(parser: ArgumentParser) -> None:
     parser.add_argument(
         "--colormap",
         help="The colour map to use for the plot",
-        default="nipy_spectral",
+        default="Spectral",
         type=str,
     )
     parser.add_argument(
@@ -62,9 +61,11 @@ def register_args(parser: ArgumentParser) -> None:
 
 
 def get_colors(configs: List[str], colormap: str) -> Dict[str, ndarray]:
-    cmap = get_cmap(colormap).resampled(len(configs))
-    colors = cmap(arange(0, cmap.N))
-    return {configs[i]: colors[i] for i in range(0, len(configs))}
+    cmap = get_cmap(colormap)
+    config_count = len(configs)
+    cmap = cmap.resampled(config_count)
+    colors = cmap(arange(0, config_count, 1))
+    return {configs[i]: colors[i] for i in range(0, cmap.N)}
 
 
 def plot_timestamps(
@@ -88,33 +89,40 @@ def plot_timestamps(
         for result in sorted(
             query_results, key=lambda r: natural_sort_key(r.experiment)
         ):
+            plot_x = [0, *result.timestamps]
+            plot_y = range(0, result.results_max + 1)
             # the result count will have (0, 0) added to the beginning
             if steps:
                 ax.step(
-                    x=[0, *result.timestamps],
-                    y=range(0, result.results + 1),
+                    plot_x,
+                    plot_y,
                     lw=1,
                     alpha=0.8,
-                    where="post",
                     label=result.experiment,
                     color=colors[result.experiment],
+                    where="post",
                 )
             else:
                 ax.plot(
-                    [0, *result.timestamps],
-                    range(0, result.results + 1),
+                    plot_x,
+                    plot_y,
                     lw=1,
                     alpha=0.8,
                     label=result.experiment,
+                    color=colors[result.experiment],
+                )
+                ax.fill_betweenx(
+                    plot_y,
+                    [0, *result.timestamps_min],
+                    [0, *result.timestamps_max],
+                    alpha=0.2,
                     color=colors[result.experiment],
                 )
             ax.plot(
                 result.time,
-                result.results,
-                alpha=0.8,
-                lw=1,
-                marker="x",
+                result.results_max,
                 color=colors[result.experiment],
+                marker="x",
             )
         ax_xbound_upper = int(ax.get_xbound()[1] + 1)
         ax_ybound_upper = int(ax.get_ybound()[1] + 1)
@@ -154,6 +162,7 @@ def run_script(
     configs = list(set(r.experiment for r in results))
     results = group_by_query(results)
     colors = get_colors(configs, colormap)
+    info(f"Using colormap {colormap} to get {len(colors)} unique colours")
     if serif:
         rcParams["font.family"] = "serif"
         rcParams["mathtext.fontset"] = "dejavuserif"

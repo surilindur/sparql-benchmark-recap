@@ -14,27 +14,44 @@ class Result:
     id: str
     experiment: str
     results: int
+    results_min: int
+    results_max: int
     time: float
+    time_min: float
+    time_max: float
     error: bool
     timestamps: List[float]
+    timestamps_max: List[float]
+    timestamps_min: List[float]
     http_requests: int
+    http_requests_min: int
+    http_requests_max: int
 
     def __init__(self, experiment: str, row: Dict[str, str | int | float]) -> None:
+        # helper functions
+        get_float = lambda k: float(row[k]) if len(row.get(k, "")) else 0
+        get_ts_values = lambda k: (
+            sorted(float(t) / TIME_DIVISOR for t in row[k].split(LIST_SEPARATOR))
+            if len(row.get(k, ""))
+            else []
+        )
+        # actually assigning the data
         self.experiment = experiment
         self.name = row["name"]
         self.id = row["id"]
-        self.results = int(row["results"])
-        self.time = int(row["time"]) / TIME_DIVISOR
+        self.results = round(get_float("results"))
+        self.results_min = round(get_float("resultsMin"))
+        self.results_max = round(get_float("resultsMax"))
+        self.time = get_float("time") / TIME_DIVISOR
+        self.time_min = get_float("timeMin") / TIME_DIVISOR
+        self.time_max = get_float("timeMax") / TIME_DIVISOR
         self.error = row["error"] == "true"
-        self.timestamps = (
-            list(int(t) / TIME_DIVISOR for t in row["timestamps"].split(LIST_SEPARATOR))
-            if len(row["timestamps"]) > 0
-            else []
-        )
-        self.timestamps.sort()
-        self.http_requests = (
-            int(row["httpRequests"]) if len(row["httpRequests"]) > 0 else 0
-        )
+        self.timestamps = get_ts_values("timestamps")
+        self.timestamps_min = get_ts_values("timestampsMin")
+        self.timestamps_max = get_ts_values("timestampsMax")
+        self.http_requests = round(get_float("httpRequests"))
+        self.http_requests_min = round(get_float("httpRequestsMin"))
+        self.http_requests_max = round(get_float("httpRequestsMax"))
 
     def diefficiency(self, linear: bool = False) -> float:
         previous_timestamp = 0
